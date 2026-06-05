@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  candles-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: candles-frontend
+
+    # Seguridad: Puerto no estándar para evitar acceso directo
+    ports:
+      - "5174:3000"
+
+    # Seguridad: Red aislada
+    networks:
+      - candles-network
+
+    # Seguridad: Recursos limitados
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+    # Seguridad: Política de reinicio
+    restart: on-failure:3
+
+    # Seguridad: Sistema de archivos read-only (excepto /tmp)
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+
+    # Logs limitados
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Variables de entorno
+    environment:
+      - NODE_ENV=production
+
+    # Health check para monitoreo
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  candles-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
